@@ -43,9 +43,6 @@ DOMAIN_INFO = {
     "": "",
     "": "",
 }
-
-# DNS server for zone transfer
-NAMESERVER = ""
 #######################
 
 PLATFORM_URL = "https://" + FMC + "/api/fmc_platform/v1"
@@ -222,25 +219,38 @@ def dns_zone_xfer():
     Return all IP addresses for any A records
     """
     domain_addresses = {}
-    console.print(f"Using nameserver: {NAMESERVER}\n")
     for domain in DOMAIN_INFO.values():
         domain_addresses[domain] = []
 
-        # Attempt zone transfer
-        console.print(f"Attempting zone transfer for domain {domain}...")
+        console.print(f"  -- Processing {domain} --")
+
+        # Find nameservers
+        console.print(f"Locating nameservers...")
         try:
-            z = dns.zone.from_xfr(dns.query.xfr(NAMESERVER, domain))
-            console.print("[green]Zone transfer successful.")
-        except:
-            console.print("[red]Zone transfer failed.\n")
+            ns = [server for server in dns.resolver.resolve(domain, "NS")]
+            console.print(f"Found {len(ns)} nameservers.")
+        except dns.resolver.NXDOMAIN:
+            console.print("[red]NXDOMAIN - Domain not found.")
             continue
-        # Iterate through all records in the zone, pull out A records
-        for _, _, rdata in z.iterate_rdatas("A"):
-            # Append all IP addresses to list / check for duplicates
-            if rdata.to_text() not in domain_addresses[domain]:
-                domain_addresses[domain].append(rdata.to_text())
+        for nameserver in ns:
+            # Get nameserver ip
+            ip_list = dns.resolver.resolve(nameserver.target, 'A')
+            # Attempt zone transfer
+            for ip in ip_list:
+                console.print(f"Attempting zone transfer from {nameserver}...")
+                try:
+                    z = dns.zone.from_xfr(dns.query.xfr(ip.to_text(), domain))
+                    console.print("[green]Zone transfer successful.")
+                except:
+                    console.print("[red]Zone transfer failed or refused.")
+                    continue
+                # Iterate through all records in the zone, pull out A records
+                for _, _, rdata in z.iterate_rdatas("A"):
+                    # Append all IP addresses to list / check for duplicates
+                    if rdata.to_text() not in domain_addresses[domain]:
+                        domain_addresses[domain].append(rdata.to_text())
         console.print(
-            f"Collected {len(domain_addresses[domain])} unique IP addresses.\n"
+            f"[green]Finished:[/green] Collected {len(domain_addresses[domain])} unique IP addresses.\n"
         )
     return domain_addresses
 

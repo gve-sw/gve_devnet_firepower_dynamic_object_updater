@@ -3,7 +3,7 @@
 This code repository contains a script to automatically update FMC dynamic objects using information from a DNS zone transfer.
 
 This script will:
- - Request zone transfer from a provided DNS server
+ - Request zone transfer for a target domain
  - Query FMC dynamic objects to inspect current contents
  - Compare results to determine addresses to add/remove from FMC object
  - Modify FMC object to add/remove addresses
@@ -44,9 +44,6 @@ DOMAIN_INFO = {
     "corp_domain_ip_list": "test.local",
     "lab_domain_ip_list": "lab.test.local",
 }
-
-# DNS server for zone transfer
-NAMESERVER = "<NAMESERVER ADDRESS>"
 #######################
 ```
 
@@ -57,6 +54,7 @@ NAMESERVER = "<NAMESERVER ADDRESS>"
 Run the script with `python3 fmc_dynamic_object_updater.py`
 
 The script will then:
+ - Find nameservers for each domain
  - Request zone transfer information for each domain
  - Store all unique IP addresses for any DNS A records
  - Query FMC to locate matching dynamic objects
